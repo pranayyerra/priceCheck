@@ -90,16 +90,19 @@ document.addEventListener("DOMContentLoaded", function () {
     // Process results from each platform
     currentResults.forEach((results, platform) => {
       results.forEach((product) => {
-        const normalizedName = normalizeProductName(product.name);
+        const normalizedProduct = normalizeProductName(
+          searchInput.value.trim()
+        );
 
-        if (!productMap.has(normalizedName)) {
-          productMap.set(normalizedName, {
-            name: product.name,
+        if (!productMap.has(normalizedProduct)) {
+          productMap.set(normalizedProduct, {
+            name: normalizedProduct,
             platforms: {},
           });
         }
 
-        productMap.get(normalizedName).platforms[platform] = {
+        productMap.get(normalizedProduct).platforms[platform] = {
+          name: normalizeProductName(product.name),
           price: product.price,
           deliveryTime: product.deliveryTime,
           url: product.url,
