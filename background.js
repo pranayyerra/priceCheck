@@ -12,7 +12,6 @@ async function searchProducts(query) {
   const platforms = [
     { name: "BigBasket", fetcher: fetchBigBasketResults },
     { name: "Blinkit", fetcher: fetchBlinkitResults },
-    { name: "Zepto", fetcher: fetchZeptoResults },
     { name: "Amazon", fetcher: fetchAmazonResults },
   ];
 
