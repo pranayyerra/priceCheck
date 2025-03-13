@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         productMap.get(normalizedProduct).platforms[platform] = {
-          name: normalizeProductName(product.name),
+          name: product.name,
           price: product.price,
           deliveryTime: product.deliveryTime,
           url: product.url,
