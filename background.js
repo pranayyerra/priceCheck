@@ -18,12 +18,18 @@ async function searchProducts(query) {
   // Launch all fetchers in parallel
   platforms.forEach(async (platform) => {
     try {
-      const results = await platform.fetcher(query);
+      let results = await platform.fetcher(query);
+
+      // Filter out sponsored products
+      results = results.filter(
+        (product) => !product.name?.toLowerCase().includes("sponsored")
+      );
+
       // Send results back to popup as they arrive
       chrome.runtime.sendMessage({
         type: "platformResults",
         platform: platform.name,
-        results: results,
+        results: [results[0]],
       });
     } catch (error) {
       console.error(`Error fetching from ${platform.name}:`, error);
@@ -131,7 +137,7 @@ async function fetchBigBasketResults(query) {
     }
 
     console.log("BigBasket processed results:", products);
-    return [products[0]];
+    return products;
   } catch (error) {
     console.error("BigBasket fetch error:", error);
     return [];
@@ -144,11 +150,11 @@ async function fetchBlinkitResults(query) {
     const html = await fetchBlinkitHtml(searchUrl);
     const productMatch = extractFirstProductMatch(html);
     if (!productMatch) return [];
-    
+
     const product = parseBlinkitProduct(productMatch);
     return product ? [product] : [];
   } catch (error) {
-    console.error('Blinkit fetch error:', error);
+    console.error("Blinkit fetch error:", error);
     return [];
   }
 }
@@ -156,34 +162,47 @@ async function fetchBlinkitResults(query) {
 async function fetchBlinkitHtml(url) {
   const response = await fetchWithRetry(url, {
     headers: {
-      'Accept': 'text/html',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
+      Accept: "text/html",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    },
   });
   return response.text();
 }
 
 function extractFirstProductMatch(html) {
-  const matches = html.match(/<div class="Product__UpdatedPlpProductContainer[^"]*".*?<\/div><\/div><\/a>/gs);
+  const matches = html.match(
+    /<div class="Product__UpdatedPlpProductContainer[^"]*".*?<\/div><\/div><\/a>/gs
+  );
   return matches?.[0];
 }
 
 function parseBlinkitProduct(productHtml) {
-  const nameMatch = productHtml.match(/<div class="Product__UpdatedTitle[^"]*">([^<]+)<\/div>/);
-  const priceContainer = productHtml.match(/<div class="Product__UpdatedPriceAndAtcContainer[^"]*">(.*?)<\/div><\/div><\/div>/s);
+  const nameMatch = productHtml.match(
+    /<div class="Product__UpdatedTitle[^"]*">([^<]+)<\/div>/
+  );
+  const priceContainer = productHtml.match(
+    /<div class="Product__UpdatedPriceAndAtcContainer[^"]*">(.*?)<\/div><\/div><\/div>/s
+  );
   const priceMatch = priceContainer?.[0].match(/₹(?:<!-- -->)?([0-9,.]+)/);
   const urlMatch = productHtml.match(/href="([^"]+)"/);
-  const quantityMatch = productHtml.match(/class="bff_variant_text_only[^"]*">([^<]+)<\/span>/);
-  const outOfStockMatch = productHtml.match(/<div class="AddToCart__UpdatedOutOfStockTag[^"]*">/);
+  const quantityMatch = productHtml.match(
+    /class="bff_variant_text_only[^"]*">([^<]+)<\/span>/
+  );
+  const outOfStockMatch = productHtml.match(
+    /<div class="AddToCart__UpdatedOutOfStockTag[^"]*">/
+  );
 
   if (!nameMatch || !priceMatch || outOfStockMatch) return null;
 
   return {
-    name: `${nameMatch[1].trim()}${quantityMatch ? ` - ${quantityMatch[1].trim()}` : ''}`,
+    name: `${nameMatch[1].trim()}${
+      quantityMatch ? ` - ${quantityMatch[1].trim()}` : ""
+    }`,
     price: parseCurrency(priceMatch[1]),
-    url: `https://blinkit.com${urlMatch?.[1] || ''}`,
-    deliveryTime: '30 mins',
-    platform: 'Blinkit'
+    url: `https://blinkit.com${urlMatch?.[1] || ""}`,
+    deliveryTime: "30 mins",
+    platform: "Blinkit",
   };
 }
 
@@ -237,7 +256,7 @@ async function fetchAmazonResults(query) {
       });
     }
 
-    return [products[0]];
+    return products;
   } catch (error) {
     console.error("Amazon fetch error:", error);
     return [];
