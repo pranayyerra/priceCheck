@@ -127,67 +127,69 @@ document.addEventListener("DOMContentLoaded", function () {
     // Clear current display
     resultsBody.innerHTML = "";
 
-    // Display results for each search term
-    allResults.forEach((platformResults, searchTerm) => {
-      const row = document.createElement("tr");
+    // Convert to array, reverse it to show newest first, then iterate
+    Array.from(allResults.entries())
+      .reverse()
+      .forEach(([searchTerm, platformResults]) => {
+        const row = document.createElement("tr");
 
-      // Search term cell with delete button - add structure similar to platform cells
-      let html = `
-        <td class="platform-data">
-          <div class="product-name">${searchTerm}</div>
-          <div class="search-term-spacer">&nbsp;</div>
-          <div class="search-term-actions">
-            <button class="delete-button" data-search="${searchTerm}">X</button>
-          </div>
-        </td>
-      `;
+        // Search term cell with delete button - add structure similar to platform cells
+        let html = `
+          <td class="platform-data">
+            <div class="product-name">${searchTerm}</div>
+            <div class="search-term-spacer">&nbsp;</div>
+            <div class="search-term-actions">
+              <button class="delete-button" data-search="${searchTerm}">X</button>
+            </div>
+          </td>
+        `;
 
-      // Find the lowest price among all platforms for this search term
-      let lowestPrice = Infinity;
-      Object.values(PLATFORMS).forEach((platform) => {
-        const results = platformResults.get(platform) || [];
-        const product = results[0]; // Get first result
+        // Find the lowest price among all platforms for this search term
+        let lowestPrice = Infinity;
+        Object.values(PLATFORMS).forEach((platform) => {
+          const results = platformResults.get(platform) || [];
+          const product = results[0]; // Get first result
 
-        if (product && typeof product.price === "number") {
-          lowestPrice = Math.min(lowestPrice, product.price);
-        }
+          if (product && typeof product.price === "number") {
+            lowestPrice = Math.min(lowestPrice, product.price);
+          }
+        });
+
+        // Platform cells
+        Object.values(PLATFORMS).forEach((platform) => {
+          const results = platformResults.get(platform) || [];
+          const product = results[0]; // Get first result
+
+          if (product) {
+            // Check if this product has the lowest price
+            const isLowestPrice = product.price === lowestPrice;
+            const cellClass = isLowestPrice
+              ? "platform-data lowest-price-cell"
+              : "platform-data";
+            const priceClass = isLowestPrice ? "price lowest-price" : "price";
+
+            html += `
+              <td class="${cellClass}">
+                <div class="product-name">${product.name}</div>
+                <div class="${priceClass}">Rs. ${product.price.toFixed(2)}</div>
+                <div class="delivery-time">${product.deliveryTime}</div>
+                <button class="view-button" data-url="${
+                  product.url
+                }">View</button>
+              </td>
+            `;
+          } else {
+            html += `
+              <td class="platform-data not-available">
+                <div>Not available</div>
+              </td>
+            `;
+          }
+        });
+
+        row.innerHTML = html;
+        resultsBody.appendChild(row);
       });
-
-      // Platform cells
-      Object.values(PLATFORMS).forEach((platform) => {
-        const results = platformResults.get(platform) || [];
-        const product = results[0]; // Get first result
-
-        if (product) {
-          // Check if this product has the lowest price
-          const isLowestPrice = product.price === lowestPrice;
-          const cellClass = isLowestPrice
-            ? "platform-data lowest-price-cell"
-            : "platform-data";
-          const priceClass = isLowestPrice ? "price lowest-price" : "price";
-
-          html += `
-            <td class="${cellClass}">
-              <div class="product-name">${product.name}</div>
-              <div class="${priceClass}">Rs. ${product.price.toFixed(2)}</div>
-              <div class="delivery-time">${product.deliveryTime}</div>
-              <button class="view-button" data-url="${
-                product.url
-              }">View</button>
-            </td>
-          `;
-        } else {
-          html += `
-            <td class="platform-data not-available">
-              <div>Not available</div>
-            </td>
-          `;
-        }
-      });
-
-      row.innerHTML = html;
-      resultsBody.appendChild(row);
-    });
 
     // Add event listeners to buttons
     document.querySelectorAll(".view-button").forEach((button) => {
@@ -257,7 +259,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Add some CSS for the delete button
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.textContent = `
     .delete-button {
       margin-left: 8px;
