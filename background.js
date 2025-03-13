@@ -266,7 +266,7 @@ async function fetchAmazonResults(query) {
       });
     }
 
-    return products;
+    return [products[0]];
   } catch (error) {
     console.error("Amazon fetch error:", error);
     return [];
