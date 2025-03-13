@@ -10,6 +10,17 @@ document.addEventListener("DOMContentLoaded", function () {
   };
   let currentResults = new Map(); // Store current results
 
+  // Load previous results when popup opens
+  chrome.storage.local.get(['lastSearch', 'lastResults'], function(data) {
+    if (data.lastSearch) {
+      searchInput.value = data.lastSearch;
+      if (data.lastResults) {
+        currentResults = new Map(JSON.parse(data.lastResults));
+        displayFinalResults();
+      }
+    }
+  });
+
   // Add enter key support
   searchInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
@@ -24,8 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    // Reset current results
-    currentResults.clear();
+    // Don't clear current results, just initialize loading state for new search
     initializeLoadingState();
 
     // Set up message listener for platform results
@@ -48,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   function initializeLoadingState() {
-    resultsBody.innerHTML = "";
+    // Create new loading row instead of clearing the table
     const loadingRow = document.createElement("tr");
     loadingRow.id = "loadingRow";
 
@@ -63,12 +73,18 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     loadingRow.innerHTML = html;
-    resultsBody.appendChild(loadingRow);
+    resultsBody.insertBefore(loadingRow, resultsBody.firstChild);
   }
 
   function handlePlatformResults(platform, results) {
     // Store the results
     currentResults.set(platform, results);
+
+    // Save results to storage
+    chrome.storage.local.set({
+      'lastSearch': searchInput.value,
+      'lastResults': JSON.stringify(Array.from(currentResults.entries()))
+    });
 
     // Remove loading state for this platform
     const loadingCell = document.getElementById(`loading-${platform}`);
@@ -84,6 +100,12 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function displayFinalResults() {
+    // Remove only the loading row
+    const loadingRow = document.getElementById("loadingRow");
+    if (loadingRow) {
+      loadingRow.remove();
+    }
+
     // Organize results by product
     const productMap = new Map();
 
@@ -115,9 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
       a.name.localeCompare(b.name)
     );
 
-    // Display results
-    resultsBody.innerHTML = "";
-
+    // Create and insert new rows at the top of the table
     organizedResults.forEach((product) => {
       const row = document.createElement("tr");
 
@@ -133,9 +153,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="product-name">${platformData.name}</div>
                 <div class="price">Rs. ${platformData.price.toFixed(2)}</div>
                 <div class="delivery-time">${platformData.deliveryTime}</div>
-                <button class="view-button" data-url="${
-                  platformData.url
-                }">View</button>
+                <button class="view-button" data-url="${platformData.url}">View</button>
               </td>
             `;
         } else {
@@ -148,13 +166,13 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       row.innerHTML = html;
-      resultsBody.appendChild(row);
+      resultsBody.insertBefore(row, resultsBody.firstChild);
     });
 
-    // Add event listeners to buttons
+    // Add event listeners to new buttons
     document.querySelectorAll(".view-button").forEach((button) => {
       button.addEventListener("click", () => {
-        chrome.tabs.create({ url: button.dataset.url });
+        chrome.tabs.create({ url: button.dataset.url, active: false });
       });
     });
   }
