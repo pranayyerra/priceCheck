@@ -275,17 +275,11 @@ async function fetchAmazonResults(query) {
         const nameText = nameMatch
           ? nameMatch[0].match(/>([^<]+)<\/span>$/)?.[1]?.trim()
           : undefined;
-        console.log({ nameText });
         const priceMatch = match.match(
           /<span[^>]*class="a-price-whole"[^>]*>([\d,]+)/i
         );
-        console.log({ priceMatch });
-        if (priceMatch && priceMatch[1]) {
-          console.log(parseCurrency(priceMatch[1]));
-        }
 
         const urlMatch = match.match(/href="([^"]+)"/);
-        console.log({ urlMatch });
 
         if (nameMatch && priceMatch && urlMatch) {
           products.push({
@@ -299,7 +293,6 @@ async function fetchAmazonResults(query) {
       });
     }
 
-    console.log({ products });
     return products[0];
   } catch (error) {
     console.error("Amazon fetch error:", error);
