@@ -2,12 +2,32 @@
 <html>
 <head>
   <title>Price Comparison</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Compare Prices</h1>
-  <input type="text" id="product" placeholder="Enter product name">
-  <button id="compare">Compare</button>
-  <div id="results"></div>
+  <div class="container">
+    <h1>Price Comparison</h1>
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Enter product name...">
+      <button id="searchButton">Search</button>
+    </div>
+    <div class="results-container">
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>BigBasket</th>
+            <th>Blinkit</th>
+            <th>Zepto</th>
+            <th>Amazon</th>
+            <th>Flipkart</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>
