@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let allResults = new Map(); // Store all accumulated results
 
   // Load all previous results when popup opens
-  chrome.storage.local.get(['searchHistory'], function(data) {
+  chrome.storage.local.get(["searchHistory"], function (data) {
     if (data.searchHistory) {
       // Convert the parsed data back into a Map of Maps
       const parsedData = JSON.parse(data.searchHistory);
@@ -82,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!allResults.has(searchTerm)) {
       allResults.set(searchTerm, new Map());
     }
-    
+
     // Store results for this search term and platform
     const platformResults = allResults.get(searchTerm);
     if (!(platformResults instanceof Map)) {
@@ -97,7 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Save all results to storage
     chrome.storage.local.set({
-      'searchHistory': JSON.stringify(serializableResults)
+      searchHistory: JSON.stringify(serializableResults),
     });
 
     // Remove loading state for this platform
@@ -109,8 +109,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Check if all platforms have reported results for current search
     const currentPlatformResults = allResults.get(searchTerm);
-    if (currentPlatformResults instanceof Map && 
-        currentPlatformResults.size === Object.values(PLATFORMS).length) {
+    if (
+      currentPlatformResults instanceof Map &&
+      currentPlatformResults.size === Object.values(PLATFORMS).length
+    ) {
       displayAllResults();
     }
   }
@@ -123,17 +125,20 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Clear current display
-    resultsBody.innerHTML = '';
+    resultsBody.innerHTML = "";
 
     // Display results for each search term
     allResults.forEach((platformResults, searchTerm) => {
       const row = document.createElement("tr");
-      
-      // Search term cell with delete button
+
+      // Search term cell with delete button - add structure similar to platform cells
       let html = `
-        <td class="product-name">
-          ${searchTerm}
-          <button class="delete-button" data-search="${searchTerm}">×</button>
+        <td class="platform-data">
+          <div class="product-name">${searchTerm}</div>
+          <div class="search-term-spacer">&nbsp;</div>
+          <div class="search-term-actions">
+            <button class="delete-button" data-search="${searchTerm}">X</button>
+          </div>
         </td>
       `;
 
@@ -145,9 +150,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (product) {
           html += `
             <td class="platform-data">
+              <div class="product-name">${product.name}</div>
               <div class="price">Rs. ${product.price.toFixed(2)}</div>
               <div class="delivery-time">${product.deliveryTime}</div>
-              <button class="view-button" data-url="${product.url}">View</button>
+              <button class="view-button" data-url="${
+                product.url
+              }">View</button>
             </td>
           `;
         } else {
@@ -177,7 +185,7 @@ document.addEventListener("DOMContentLoaded", function () {
         allResults.delete(searchTerm);
         // Update storage
         chrome.storage.local.set({
-          'searchHistory': JSON.stringify(Array.from(allResults.entries()))
+          searchHistory: JSON.stringify(Array.from(allResults.entries())),
         });
         // Refresh display
         displayAllResults();
@@ -239,7 +247,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Add some CSS for the delete button
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.textContent = `
     .delete-button {
       margin-left: 8px;
@@ -250,6 +258,7 @@ document.addEventListener("DOMContentLoaded", function () {
       color: white;
       cursor: pointer;
       font-size: 12px;
+      padding: 6px;
     }
     .delete-button:hover {
       background: #cc0000;
