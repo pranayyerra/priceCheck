@@ -164,4 +164,39 @@ document.addEventListener('DOMContentLoaded', function() {
       </tr>
     `;
   }
+
+  function displayResults(searchTerm, results) {
+    const tableBody = document.getElementById('resultsBody');
+    tableBody.innerHTML = '';
+
+    // Create a row for this search term
+    const row = document.createElement('tr');
+    
+    // Product column - Search term
+    const productCell = document.createElement('td');
+    productCell.textContent = searchTerm;
+    row.appendChild(productCell);
+
+    // Platform columns
+    const platforms = ['BigBasket', 'Blinkit', 'Zepto', 'Amazon'];
+    
+    platforms.forEach(platform => {
+      const platformCell = document.createElement('td');
+      const platformResult = results.find(r => r.platform === platform);
+      
+      if (platformResult) {
+        // Show both parsed name and price
+        platformCell.innerHTML = `
+          <div class="product-name">${platformResult.name}</div>
+          <div class="product-price">₹${platformResult.price.toFixed(2)}</div>
+        `;
+      } else {
+        platformCell.textContent = 'N/A';
+      }
+      
+      row.appendChild(platformCell);
+    });
+
+    tableBody.appendChild(row);
+  }
 });

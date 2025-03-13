@@ -59,8 +59,13 @@
   }
   
   .product-name {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  
+  .product-price {
     font-weight: bold;
-    min-width: 150px;
+    color: #2c5282;
   }
   
   .price {
@@ -131,11 +136,6 @@
     font-weight: bold;
   }
 
-  .product-name {
-    font-size: 0.9em;
-    color: #666;
-  }
-
   .add-to-cart {
     padding: 5px 10px;
     background-color: #008CBA;
@@ -174,4 +174,9 @@
     background-color: #fff3f3;
     border-radius: 4px;
     text-align: center;
+  }
+
+  td {
+    vertical-align: top;
+    padding: 8px;
   }
