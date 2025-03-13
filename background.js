@@ -130,7 +130,6 @@ async function fetchBigBasketResults(query) {
           name: name,
           price: parseCurrency(priceMatch[1]),
           url: `https://www.bigbasket.com${urlMatch[1]}`,
-          deliveryTime: "2-3 days",
           platform: "BigBasket",
         });
       }
@@ -201,7 +200,6 @@ function parseBlinkitProduct(productHtml) {
     }`,
     price: parseCurrency(priceMatch[1]),
     url: `https://blinkit.com${urlMatch?.[1] || ""}`,
-    deliveryTime: "30 mins",
     platform: "Blinkit",
   };
 }
@@ -249,7 +247,6 @@ async function fetchAmazonResults(query) {
             name: nameText,
             price: parseCurrency(priceMatch[1]),
             url: `https://www.amazon.in${urlMatch[1]}`,
-            deliveryTime: "2-3 days",
             platform: "Amazon",
           });
         }
@@ -280,7 +277,6 @@ function organizeResults(platformResults) {
 
       productMap.get(normalizedName).platforms[platform] = {
         price: product.price,
-        deliveryTime: product.deliveryTime,
         url: product.url,
       };
     });

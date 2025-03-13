@@ -172,7 +172,6 @@ document.addEventListener("DOMContentLoaded", function () {
               <td class="${cellClass}">
                 <div class="product-name">${product.name}</div>
                 <div class="${priceClass}">Rs. ${product.price.toFixed(2)}</div>
-                <div class="delivery-time">${product.deliveryTime}</div>
                 <button class="view-button" data-url="${
                   product.url
                 }">View</button>
