@@ -131,7 +131,7 @@ async function fetchBigBasketResults(query) {
     }
 
     console.log("BigBasket processed results:", products);
-    return products;
+    return [products[0]];
   } catch (error) {
     console.error("BigBasket fetch error:", error);
     return [];
@@ -140,80 +140,51 @@ async function fetchBigBasketResults(query) {
 
 async function fetchBlinkitResults(query) {
   const searchUrl = `https://blinkit.com/s/?q=${encodeURIComponent(query)}`;
-  const products = [];
-  
   try {
-    const response = await fetchWithRetry(searchUrl, {
-      headers: {
-        'Accept': 'text/html',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-
-    const html = await response.text();
-    console.log('Blinkit HTML:', html.substring(0, 500));
+    const html = await fetchBlinkitHtml(searchUrl);
+    const productMatch = extractFirstProductMatch(html);
+    if (!productMatch) return [];
     
-    const productMatches = html.match(/<div class="Product__UpdatedPlpProductContainer[^"]*".*?<\/div><\/div><\/a>/gs);
-    console.log('Blinkit product matches:', productMatches ? productMatches.length : 'none found');
-
-    if (productMatches && productMatches.length > 0) {
-      const productHtml = productMatches[0];
-      console.log('Blinkit first product HTML:', productHtml);
-
-      // Extract product details
-      const nameMatch = productHtml.match(/<div class="Product__UpdatedTitle[^"]*">([^<]+)<\/div>/);
-      
-      // Match the price container
-      const priceContainer = productHtml.match(/<div class="Product__UpdatedPriceAndAtcContainer[^"]*">(.*?)<\/div><\/div><\/div>/s);
-      
-      let priceMatch = null;
-      let strikethroughMatch = null;
-      
-      if (priceContainer) {
-        // Updated regex to handle HTML comments between ₹ and the price
-        priceMatch = priceContainer[0].match(/₹(?:<!-- -->)?([0-9,.]+)/);
-        strikethroughMatch = priceContainer[0].match(/text-decoration: line-through[^>]*>₹(?:<!-- -->)?([0-9,.]+)/);
-      }
-
-      const urlMatch = productHtml.match(/href="([^"]+)"/);
-      const quantityMatch = productHtml.match(/class="bff_variant_text_only[^"]*">([^<]+)<\/span>/);
-      const outOfStockMatch = productHtml.match(/<div class="AddToCart__UpdatedOutOfStockTag[^"]*">/);
-
-      console.log('Matches for first product:', {
-        name: nameMatch ? nameMatch[1] : null,
-        price: priceMatch ? priceMatch[1] : null,
-        strikethrough: strikethroughMatch ? strikethroughMatch[1] : null,
-        url: urlMatch ? urlMatch[1] : null,
-        quantity: quantityMatch ? quantityMatch[1] : null,
-        outOfStock: !!outOfStockMatch
-      });
-
-      if (nameMatch && priceMatch && !outOfStockMatch) {
-        const productData = {
-          name: nameMatch[1].trim() + (quantityMatch ? ` - ${quantityMatch[1].trim()}` : ''),
-          price: parseCurrency(priceMatch[1]),
-          url: `https://blinkit.com${urlMatch ? urlMatch[1] : ''}`,
-          deliveryTime: '30 mins',
-          platform: 'Blinkit',
-          originalPrice: strikethroughMatch ? parseCurrency(strikethroughMatch[1]) : null
-        };
-        console.log('Adding product:', productData);
-        products.push(productData);
-      } else {
-        console.log('Skipping product due to:', {
-          hasName: !!nameMatch,
-          hasPrice: !!priceMatch,
-          isOutOfStock: !!outOfStockMatch
-        });
-      }
-    }
-
-    console.log('Blinkit processed results:', products);
-    return products;
+    const product = parseBlinkitProduct(productMatch);
+    return product ? [product] : [];
   } catch (error) {
     console.error('Blinkit fetch error:', error);
     return [];
   }
+}
+
+async function fetchBlinkitHtml(url) {
+  const response = await fetchWithRetry(url, {
+    headers: {
+      'Accept': 'text/html',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+  });
+  return response.text();
+}
+
+function extractFirstProductMatch(html) {
+  const matches = html.match(/<div class="Product__UpdatedPlpProductContainer[^"]*".*?<\/div><\/div><\/a>/gs);
+  return matches?.[0];
+}
+
+function parseBlinkitProduct(productHtml) {
+  const nameMatch = productHtml.match(/<div class="Product__UpdatedTitle[^"]*">([^<]+)<\/div>/);
+  const priceContainer = productHtml.match(/<div class="Product__UpdatedPriceAndAtcContainer[^"]*">(.*?)<\/div><\/div><\/div>/s);
+  const priceMatch = priceContainer?.[0].match(/₹(?:<!-- -->)?([0-9,.]+)/);
+  const urlMatch = productHtml.match(/href="([^"]+)"/);
+  const quantityMatch = productHtml.match(/class="bff_variant_text_only[^"]*">([^<]+)<\/span>/);
+  const outOfStockMatch = productHtml.match(/<div class="AddToCart__UpdatedOutOfStockTag[^"]*">/);
+
+  if (!nameMatch || !priceMatch || outOfStockMatch) return null;
+
+  return {
+    name: `${nameMatch[1].trim()}${quantityMatch ? ` - ${quantityMatch[1].trim()}` : ''}`,
+    price: parseCurrency(priceMatch[1]),
+    url: `https://blinkit.com${urlMatch?.[1] || ''}`,
+    deliveryTime: '30 mins',
+    platform: 'Blinkit'
+  };
 }
 
 async function fetchAmazonResults(query) {
