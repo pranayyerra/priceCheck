@@ -256,28 +256,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
     tableBody.appendChild(row);
   }
-
-  // Add some CSS for the delete button
-  const style = document.createElement("style");
-  style.textContent = `
-    .delete-button {
-      margin-left: 8px;
-      padding: 2px 6px;
-      border-radius: 50%;
-      border: none;
-      background: #ff4444;
-      color: white;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .delete-button:hover {
-      background: #cc0000;
-    }
-    .product-name {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-  `;
-  document.head.appendChild(style);
 });

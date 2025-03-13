@@ -62,9 +62,9 @@ th {
 .product-name {
   font-size: 14px;
   margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .product-price {
@@ -184,25 +184,6 @@ th {
   text-align: center;
 }
 
-  td {
-    vertical-align: top;
-    padding: 8px;
-  }
-
-  .delete-button {
-    margin-left: 8px;
-    padding: 2px 6px;
-    border-radius: 50%;
-    border: none;
-    background: #ff4444;
-    color: white;
-    cursor: pointer;
-    font-size: 12px;
-  }
-
-  .delete-button:hover {
-    background: #cc0000;
-  }
 td {
   vertical-align: top;
   padding: 8px;
@@ -215,4 +196,19 @@ td {
 .lowest-price {
   color: #2e7d32;
   font-weight: bold;
+}
+
+.delete-button {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 50%;
+  border: none;
+  background: #ff4444;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.delete-button:hover {
+  background: #cc0000;
 }
