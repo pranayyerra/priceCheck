@@ -1,5 +1,3 @@
-// import { parseCurrency, fetchWithRetry, cache } from './utils.js';
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "search") {
     searchProducts(request.query);
@@ -13,8 +11,7 @@ async function searchProducts(query) {
     { name: "BigBasket", fetcher: fetchBigBasketResults },
     { name: "Blinkit", fetcher: fetchBlinkitResults },
     { name: "Zepto", fetcher: fetchZeptoResults },
-    { name: "Amazon", fetcher: fetchAmazonResults },
-    { name: "Flipkart", fetcher: fetchFlipkartResults },
+    { name: "Amazon", fetcher: fetchAmazonResults }
   ];
 
   // Launch all fetchers in parallel
@@ -44,8 +41,7 @@ async function fetchAllPlatformResults(query) {
     bigbasket: fetchBigBasketResults(query),
     blinkit: fetchBlinkitResults(query),
     zepto: fetchZeptoResults(query),
-    amazon: fetchAmazonResults(query),
-    flipkart: fetchFlipkartResults(query),
+    amazon: fetchAmazonResults(query)
   };
 
   const results = await Promise.allSettled(
@@ -66,9 +62,9 @@ async function fetchAllPlatformResults(query) {
 }
 
 async function fetchBigBasketResults(query) {
-  const searchUrl = `https://www.bigbasket.com/customsearch/products/?q=${encodeURIComponent(
+  const searchUrl = `https://www.bigbasket.com/ps/?q=${encodeURIComponent(
     query
-  )}`;
+  )}&nc=as`;
 
   try {
     const response = await fetchWithRetry(searchUrl, {
@@ -113,7 +109,7 @@ async function fetchBigBasketResults(query) {
 }
 
 async function fetchBlinkitResults(query) {
-  const searchUrl = `https://blinkit.com/api/v1/search?q=${encodeURIComponent(
+  const searchUrl = `https://blinkit.com/s/?q=${encodeURIComponent(
     query
   )}`;
 
@@ -149,7 +145,7 @@ async function fetchBlinkitResults(query) {
 }
 
 async function fetchZeptoResults(query) {
-  const searchUrl = `https://www.zeptonow.com/api/p1/search?q=${encodeURIComponent(
+  const searchUrl = `https://www.zeptonow.com/search?q=${encodeURIComponent(
     query
   )}`;
 
@@ -231,51 +227,6 @@ async function fetchAmazonResults(query) {
   }
 }
 
-async function fetchFlipkartResults(query) {
-  const searchUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(
-    query
-  )}+grocery`;
-
-  try {
-    const response = await fetchWithRetry(searchUrl, {
-      headers: {
-        Accept: "text/html",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    const html = await response.text();
-    const products = [];
-
-    // Parse the HTML using regex
-    const productMatches = html.match(/<div class="_1AtVbE">(.*?)<\/div>/gs);
-
-    if (productMatches) {
-      productMatches.forEach((match) => {
-        const nameMatch = match.match(/_4rR01T">(.*?)<\/div>/);
-        const priceMatch = match.match(/_30jeq3">(₹|Rs\.)\s*([\d,]+)/);
-        const urlMatch = match.match(/href="([^"]+)"/);
-
-        if (nameMatch && priceMatch && urlMatch) {
-          products.push({
-            name: nameMatch[1].trim(),
-            price: parseCurrency(priceMatch[2]),
-            url: `https://www.flipkart.com${urlMatch[1]}`,
-            deliveryTime: "2-4 days",
-            platform: "Flipkart",
-          });
-        }
-      });
-    }
-
-    return products;
-  } catch (error) {
-    console.error("Flipkart fetch error:", error);
-    return [];
-  }
-}
-
 function organizeResults(platformResults) {
   const productMap = new Map();
 
@@ -322,6 +273,7 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
     try {
       const response = await fetch(url, {
         ...options,
+        mode: "no-cors",
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",

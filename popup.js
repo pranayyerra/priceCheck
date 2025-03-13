@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const searchButton = document.getElementById('searchButton');
   const resultsBody = document.getElementById('resultsBody');
 
-  const PLATFORMS = ['BigBasket', 'Blinkit', 'Zepto', 'Amazon', 'Flipkart'];
+  const PLATFORMS = ['BigBasket', 'Blinkit', 'Zepto', 'Amazon'];
   let currentResults = new Map(); // Store current results
 
   // Add enter key support

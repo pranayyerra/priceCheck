@@ -5,15 +5,13 @@
     "description": "Compare prices across multiple grocery shopping platforms",
     "permissions": [
       "activeTab",
-      "storage",
-      "scripting"
+      "storage"
     ],
     "host_permissions": [
       "*://*.bigbasket.com/*",
       "*://*.blinkit.com/*",
-      "*://*.zepto.in/*",
-      "*://*.amazon.in/*",
-      "*://*.flipkart.com/*"
+      "*://*.zeptonow.com/*",
+      "*://*.amazon.in/*"
     ],
     "action": {
       "default_popup": "popup.html",
@@ -25,6 +23,9 @@
     },
     "background": {
       "service_worker": "background.js"
+    },
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.bigbasket.com https://blinkit.com https://www.zeptonow.com https://www.amazon.in"
     }
   }
   
