@@ -8,10 +8,9 @@
       "storage"
     ],
     "host_permissions": [
-      "*://*.bigbasket.com/*",
-      "*://*.blinkit.com/*",
-      "*://*.zeptonow.com/*",
-      "*://*.amazon.in/*"
+      "https://www.bigbasket.com/*",
+      "https://blinkit.com/*",
+      "https://www.amazon.in/*"
     ],
     "action": {
       "default_popup": "popup.html",
@@ -25,7 +24,7 @@
       "service_worker": "background.js"
     },
     "content_security_policy": {
-      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.bigbasket.com https://blinkit.com https://www.zeptonow.com https://www.amazon.in"
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.bigbasket.com https://blinkit.com https://www.amazon.in;"
     }
   }
   

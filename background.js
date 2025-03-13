@@ -42,7 +42,6 @@ async function fetchAllPlatformResults(query) {
   const searchPromises = {
     bigbasket: fetchBigBasketResults(query),
     blinkit: fetchBlinkitResults(query),
-    zepto: fetchZeptoResults(query),
     amazon: fetchAmazonResults(query),
   };
 
@@ -142,110 +141,78 @@ async function fetchBigBasketResults(query) {
 
 async function fetchBlinkitResults(query) {
   const searchUrl = `https://blinkit.com/s/?q=${encodeURIComponent(query)}`;
-  const products = []; // Define the products array
-
+  const products = [];
+  
   try {
     const response = await fetchWithRetry(searchUrl, {
       headers: {
-        Accept: "text/html",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
+        'Accept': 'text/html',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
     });
 
     const html = await response.text();
-    console.log("Blinkit HTML:", html.substring(0, 500));
+    console.log('Blinkit HTML:', html.substring(0, 500));
+    
+    const productMatches = html.match(/<div class="Product__UpdatedPlpProductContainer[^"]*".*?<\/div><\/div><\/a>/gs);
+    console.log('Blinkit product matches:', productMatches ? productMatches.length : 'none found');
 
-    const productMatches = html.match(
-      /<div class="Product__UpdatedPlpProductContainer[^>]*>.*?<\/div><\/div>/gs
-    );
-    console.log(
-      "Blinkit product matches:",
-      productMatches ? productMatches.length : "none found"
-    );
+    if (productMatches && productMatches.length > 0) {
+      const productHtml = productMatches[0];
+      console.log('Blinkit first product HTML:', productHtml);
 
-    if (productMatches) {
-      const firstMatch = productMatches[0];
-      console.log("Blinkit first product HTML:", firstMatch);
+      // Extract product details
+      const nameMatch = productHtml.match(/<div class="Product__UpdatedTitle[^"]*">([^<]+)<\/div>/);
+      
+      // Match the price container
+      const priceContainer = productHtml.match(/<div class="Product__UpdatedPriceAndAtcContainer[^"]*">(.*?)<\/div><\/div><\/div>/s);
+      
+      let priceMatch = null;
+      let strikethroughMatch = null;
+      
+      if (priceContainer) {
+        // Updated regex to handle HTML comments between ₹ and the price
+        priceMatch = priceContainer[0].match(/₹(?:<!-- -->)?([0-9,.]+)/);
+        strikethroughMatch = priceContainer[0].match(/text-decoration: line-through[^>]*>₹(?:<!-- -->)?([0-9,.]+)/);
+      }
 
-      const nameMatch = firstMatch.match(
-        /Product__UpdatedTitle[^"]*">([^<]+)<\/div>/
-      );
-      console.log("Blinkit name match:", nameMatch);
+      const urlMatch = productHtml.match(/href="([^"]+)"/);
+      const quantityMatch = productHtml.match(/class="bff_variant_text_only[^"]*">([^<]+)<\/span>/);
+      const outOfStockMatch = productHtml.match(/<div class="AddToCart__UpdatedOutOfStockTag[^"]*">/);
 
-      const priceMatch = firstMatch.match(
-        /font-weight: 600; font-size: 12px;">₹([0-9,.]+)<\/div>/
-      );
-      console.log("Blinkit price match:", priceMatch);
+      console.log('Matches for first product:', {
+        name: nameMatch ? nameMatch[1] : null,
+        price: priceMatch ? priceMatch[1] : null,
+        strikethrough: strikethroughMatch ? strikethroughMatch[1] : null,
+        url: urlMatch ? urlMatch[1] : null,
+        quantity: quantityMatch ? quantityMatch[1] : null,
+        outOfStock: !!outOfStockMatch
+      });
 
-      if (nameMatch && priceMatch) {
-        products.push({
-          name: nameMatch[1].trim(),
+      if (nameMatch && priceMatch && !outOfStockMatch) {
+        const productData = {
+          name: nameMatch[1].trim() + (quantityMatch ? ` - ${quantityMatch[1].trim()}` : ''),
           price: parseCurrency(priceMatch[1]),
-          url: searchUrl,
-          deliveryTime: "30-40 mins",
-          platform: "Blinkit",
+          url: `https://blinkit.com${urlMatch ? urlMatch[1] : ''}`,
+          deliveryTime: '30 mins',
+          platform: 'Blinkit',
+          originalPrice: strikethroughMatch ? parseCurrency(strikethroughMatch[1]) : null
+        };
+        console.log('Adding product:', productData);
+        products.push(productData);
+      } else {
+        console.log('Skipping product due to:', {
+          hasName: !!nameMatch,
+          hasPrice: !!priceMatch,
+          isOutOfStock: !!outOfStockMatch
         });
       }
     }
 
+    console.log('Blinkit processed results:', products);
     return products;
   } catch (error) {
-    console.error("Blinkit fetch error:", error);
-    return [];
-  }
-}
-
-async function fetchZeptoResults(query) {
-  const searchUrl = `https://www.zeptonow.com/search?q=${encodeURIComponent(
-    query
-  )}`;
-  const products = []; // Define the products array
-
-  try {
-    const response = await fetchWithRetry(searchUrl, {
-      headers: {
-        Accept: "text/html",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    const html = await response.text();
-    console.log("Zepto HTML:", html.substring(0, 500));
-
-    const productMatches = html.match(
-      /<div[^>]*class="[^"]*SKUDeck___StyledDiv[^"]*"[^>]*>.*?<\/div>/gs
-    );
-    console.log(
-      "Zepto product matches:",
-      productMatches ? productMatches.length : "none found"
-    );
-
-    if (productMatches) {
-      const firstMatch = productMatches[0];
-      console.log("Zepto first product HTML:", firstMatch);
-
-      const nameMatch = firstMatch.match(/text-darkOnyx-800[^>]*>([^<]+)/);
-      console.log("Zepto name match:", nameMatch);
-
-      const priceMatch = firstMatch.match(/₹\s*([0-9,.]+)/);
-      console.log("Zepto price match:", priceMatch);
-
-      if (nameMatch && priceMatch) {
-        products.push({
-          name: nameMatch[1].trim(),
-          price: parseCurrency(priceMatch[1]),
-          url: searchUrl,
-          deliveryTime: "10-20 minutes",
-          platform: "Zepto",
-        });
-      }
-    }
-
-    return products;
-  } catch (error) {
-    console.error("Zepto fetch error:", error);
+    console.error('Blinkit fetch error:', error);
     return [];
   }
 }

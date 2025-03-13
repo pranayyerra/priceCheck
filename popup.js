@@ -3,7 +3,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const searchButton = document.getElementById("searchButton");
   const resultsBody = document.getElementById("resultsBody");
 
-  const PLATFORMS = ["BigBasket", "Blinkit", "Zepto", "Amazon"];
+  const PLATFORMS = {
+    BIGBASKET: 'BigBasket',
+    BLINKIT: 'Blinkit',
+    AMAZON: 'Amazon'
+  };
   let currentResults = new Map(); // Store current results
 
   // Add enter key support
@@ -49,7 +53,7 @@ document.addEventListener("DOMContentLoaded", function () {
     loadingRow.id = "loadingRow";
 
     let html = "<td>Searching...</td>";
-    PLATFORMS.forEach((platform) => {
+    Object.values(PLATFORMS).forEach((platform) => {
       html += `
           <td class="platform-data loading" id="loading-${platform}">
             <div class="spinner"></div>
@@ -74,7 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Check if all platforms have reported results
-    if (currentResults.size === PLATFORMS.length) {
+    if (currentResults.size === Object.values(PLATFORMS).length) {
       displayFinalResults();
     }
   }
@@ -118,7 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
       let html = `<td class="product-name">${product.name}</td>`;
 
       // Platform cells
-      PLATFORMS.forEach((platform) => {
+      Object.values(PLATFORMS).forEach((platform) => {
         const platformData = product.platforms[platform];
         if (platformData) {
           html += `
@@ -162,7 +166,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function showError(message) {
     resultsBody.innerHTML = `
         <tr>
-          <td colspan="${PLATFORMS.length + 1}" class="error">
+          <td colspan="${Object.values(PLATFORMS).length + 1}" class="error">
             ${message}
           </td>
         </tr>
