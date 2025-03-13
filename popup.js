@@ -4,9 +4,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const resultsBody = document.getElementById("resultsBody");
 
   const PLATFORMS = {
-    BIGBASKET: 'BigBasket',
-    BLINKIT: 'Blinkit',
-    AMAZON: 'Amazon'
+    BIGBASKET: "BigBasket",
+    BLINKIT: "Blinkit",
+    AMAZON: "Amazon",
   };
   let currentResults = new Map(); // Store current results
 
@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (platformData) {
           html += `
               <td class="platform-data">
-                <div class="price">₹${platformData.price.toFixed(2)}</div>
+                <div class="price">Rs. ${platformData.price.toFixed(2)}</div>
                 <div class="delivery-time">${platformData.deliveryTime}</div>
                 <button class="view-button" data-url="${
                   platformData.url
@@ -186,7 +186,7 @@ document.addEventListener("DOMContentLoaded", function () {
     row.appendChild(productCell);
 
     // Platform columns
-    const platforms = ["BigBasket", "Blinkit", "Zepto", "Amazon"];
+    const platforms = ["BigBasket", "Blinkit", "Amazon"];
 
     platforms.forEach((platform) => {
       const platformCell = document.createElement("td");
@@ -196,7 +196,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Show both parsed name and price
         platformCell.innerHTML = `
             <div class="product-name">${platformResult.name}</div>
-            <div class="product-price">₹${platformResult.price.toFixed(2)}</div>
+            <div class="product-price">${platformResult.price.toFixed(2)}</div>
           `;
       } else {
         platformCell.textContent = "N/A";
