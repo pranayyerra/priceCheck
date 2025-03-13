@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const resultsBody = document.getElementById('resultsBody');
 
   const PLATFORMS = ['BigBasket', 'Blinkit', 'Zepto', 'Amazon', 'Flipkart'];
+  let currentResults = new Map(); // Store current results
 
   // Add enter key support
   searchInput.addEventListener('keypress', (e) => {
@@ -19,74 +20,97 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    showLoading();
+    // Reset current results
+    currentResults.clear();
+    initializeLoadingState();
 
+    // Set up message listener for platform results
+    chrome.runtime.onMessage.addListener(function messageListener(message) {
+      if (message.type === 'platformResults') {
+        handlePlatformResults(message.platform, message.results);
+      }
+    });
+
+    // Trigger the search
     try {
-      const results = await chrome.runtime.sendMessage({
+      await chrome.runtime.sendMessage({
         action: 'search',
         query: query
       });
-
-      if (results.length === 0) {
-        showError('No results found');
-        return;
-      }
-
-      // Group results by product name
-      const groupedResults = groupResultsByProduct(results);
-      displayResults(groupedResults);
     } catch (error) {
-      showError('Error fetching results');
+      showError('Error initiating search');
       console.error(error);
     }
   });
 
-  function showLoading() {
-    resultsBody.innerHTML = `
-      <tr>
-        <td colspan="${PLATFORMS.length + 1}" class="loading">
+  function initializeLoadingState() {
+    resultsBody.innerHTML = '';
+    const loadingRow = document.createElement('tr');
+    loadingRow.id = 'loadingRow';
+    
+    let html = '<td>Searching...</td>';
+    PLATFORMS.forEach(platform => {
+      html += `
+        <td class="platform-data loading" id="loading-${platform}">
           <div class="spinner"></div>
-          Searching across platforms...
+          <div>Loading ${platform}...</div>
         </td>
-      </tr>
-    `;
+      `;
+    });
+    
+    loadingRow.innerHTML = html;
+    resultsBody.appendChild(loadingRow);
   }
 
-  function showError(message) {
-    resultsBody.innerHTML = `
-      <tr>
-        <td colspan="${PLATFORMS.length + 1}" class="error">
-          ${message}
-        </td>
-      </tr>
-    `;
+  function handlePlatformResults(platform, results) {
+    // Store the results
+    currentResults.set(platform, results);
+    
+    // Remove loading state for this platform
+    const loadingCell = document.getElementById(`loading-${platform}`);
+    if (loadingCell) {
+      loadingCell.classList.remove('loading');
+      loadingCell.innerHTML = `<div class="platform-ready">Results ready</div>`;
+    }
+
+    // Check if all platforms have reported results
+    if (currentResults.size === PLATFORMS.length) {
+      displayFinalResults();
+    }
   }
 
-  function groupResultsByProduct(results) {
-    const grouped = new Map();
+  function displayFinalResults() {
+    // Organize results by product
+    const productMap = new Map();
 
-    results.forEach(result => {
-      const productName = result.name.toLowerCase();
-      if (!grouped.has(productName)) {
-        grouped.set(productName, {
-          name: result.name,
-          platforms: {}
-        });
-      }
-      grouped.get(productName).platforms[result.platform] = {
-        price: result.price,
-        deliveryTime: result.deliveryTime,
-        url: result.url
-      };
+    // Process results from each platform
+    currentResults.forEach((results, platform) => {
+      results.forEach(product => {
+        const normalizedName = normalizeProductName(product.name);
+        
+        if (!productMap.has(normalizedName)) {
+          productMap.set(normalizedName, {
+            name: product.name,
+            platforms: {}
+          });
+        }
+
+        productMap.get(normalizedName).platforms[platform] = {
+          price: product.price,
+          deliveryTime: product.deliveryTime,
+          url: product.url
+        };
+      });
     });
 
-    return Array.from(grouped.values());
-  }
+    // Convert to array and sort by name
+    const organizedResults = Array.from(productMap.values())
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-  function displayResults(groupedResults) {
+    // Display results
     resultsBody.innerHTML = '';
     
-    groupedResults.forEach(product => {
+    organizedResults.forEach(product => {
       const row = document.createElement('tr');
       
       // Product name cell
@@ -122,5 +146,22 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: button.dataset.url });
       });
     });
+  }
+
+  function normalizeProductName(name) {
+    return name.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function showError(message) {
+    resultsBody.innerHTML = `
+      <tr>
+        <td colspan="${PLATFORMS.length + 1}" class="error">
+          ${message}
+        </td>
+      </tr>
+    `;
   }
 });

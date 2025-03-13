@@ -2,189 +2,292 @@ import { parseCurrency, fetchWithRetry, cache } from './utils.js';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'search') {
-      searchProducts(request.query).then(sendResponse);
-      return true; // Will respond asynchronously
+      searchProducts(request.query);
+      sendResponse({ status: 'searching' });
+      return true;
     }
   });
   
   async function searchProducts(query) {
-    // Check cache first
-    const cacheKey = `search_${query}`;
-    const cachedResults = cache.get(cacheKey);
-    if (cachedResults) {
-      return cachedResults;
-    }
-  
     const platforms = [
-      {
-        name: 'BigBasket',
-        scraper: scrapeBigBasket
-      },
-      {
-        name: 'Blinkit',
-        scraper: scrapeBlinkit
-      },
-      {
-        name: 'Zepto',
-        scraper: scrapeZepto
-      },
-      {
-        name: 'Amazon',
-        scraper: scrapeAmazon
-      },
-      {
-        name: 'Flipkart',
-        scraper: scrapeFlipkart
-      }
+      { name: 'BigBasket', fetcher: fetchBigBasketResults },
+      { name: 'Blinkit', fetcher: fetchBlinkitResults },
+      { name: 'Zepto', fetcher: fetchZeptoResults },
+      { name: 'Amazon', fetcher: fetchAmazonResults },
+      { name: 'Flipkart', fetcher: fetchFlipkartResults }
     ];
   
-    const results = await Promise.allSettled(
-      platforms.map(platform => platform.scraper(query))
-    );
-  
-    const validResults = results
-      .map((result, index) => {
-        if (result.status === 'fulfilled') {
-          return {
-            platform: platforms[index].name,
-            ...result.value
-          };
-        }
-        console.error(`Error scraping ${platforms[index].name}:`, result.reason);
-        return null;
-      })
-      .filter(result => result !== null)
-      .sort((a, b) => a.price - b.price);
-  
-    // Cache the results
-    cache.set(cacheKey, validResults);
-    return validResults;
+    // Launch all fetchers in parallel
+    platforms.forEach(async platform => {
+      try {
+        const results = await platform.fetcher(query);
+        // Send results back to popup as they arrive
+        chrome.runtime.sendMessage({
+          type: 'platformResults',
+          platform: platform.name,
+          results: results
+        });
+      } catch (error) {
+        console.error(`Error fetching from ${platform.name}:`, error);
+        // Send empty results on error
+        chrome.runtime.sendMessage({
+          type: 'platformResults',
+          platform: platform.name,
+          results: []
+        });
+      }
+    });
   }
   
-  async function scrapeBigBasket(query) {
+  async function fetchAllPlatformResults(query) {
+    const searchPromises = {
+      bigbasket: fetchBigBasketResults(query),
+      blinkit: fetchBlinkitResults(query),
+      zepto: fetchZeptoResults(query),
+      amazon: fetchAmazonResults(query),
+      flipkart: fetchFlipkartResults(query)
+    };
+  
+    const results = await Promise.allSettled(Object.entries(searchPromises).map(
+      async ([platform, promise]) => {
+        try {
+          const result = await promise;
+          return { platform, result, success: true };
+        } catch (error) {
+          console.error(`Error fetching from ${platform}:`, error);
+          return { platform, result: [], success: false };
+        }
+      }
+    ));
+  
+    return results
+      .filter(result => result.status === 'fulfilled' && result.value.success)
+      .map(result => result.value);
+  }
+  
+  async function fetchBigBasketResults(query) {
     const searchUrl = `https://www.bigbasket.com/customsearch/products/?q=${encodeURIComponent(query)}`;
     
     try {
-      const response = await fetchWithRetry(searchUrl);
-      const data = await response.json();
+      const response = await fetchWithRetry(searchUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
       
-      if (!data.products || data.products.length === 0) {
-        throw new Error('No products found');
+      const html = await response.text();
+      const products = [];
+      
+      // Parse the HTML using regex or DOM parser
+      const productMatches = html.match(/<div class="product-item">(.*?)<\/div>/gs);
+      
+      if (productMatches) {
+        productMatches.forEach(match => {
+          const nameMatch = match.match(/product-name">(.*?)<\/div>/);
+          const priceMatch = match.match(/price">Rs\s*([\d.]+)/);
+          const urlMatch = match.match(/href="([^"]+)"/);
+          
+          if (nameMatch && priceMatch && urlMatch) {
+            products.push({
+              name: nameMatch[1].trim(),
+              price: parseFloat(priceMatch[1]),
+              url: `https://www.bigbasket.com${urlMatch[1]}`,
+              deliveryTime: '2-3 hours',
+              platform: 'BigBasket'
+            });
+          }
+        });
       }
-  
-      const product = data.products[0]; // Get first result
-      return {
-        price: parseCurrency(product.price),
-        deliveryTime: product.delivery_time || '2-3 hours',
-        url: `https://www.bigbasket.com${product.url}`,
-        name: product.name,
-        image: product.image_url
-      };
+      
+      return products;
     } catch (error) {
-      throw new Error(`BigBasket scraping failed: ${error.message}`);
+      console.error('BigBasket fetch error:', error);
+      return [];
     }
   }
   
-  async function scrapeBlinkit(query) {
-    const searchUrl = `https://blinkit.com/v2/search?q=${encodeURIComponent(query)}`;
+  async function fetchBlinkitResults(query) {
+    const searchUrl = `https://blinkit.com/api/v1/search?q=${encodeURIComponent(query)}`;
     
     try {
-      const response = await fetchWithRetry(searchUrl);
-      const data = await response.json();
+      const response = await fetchWithRetry(searchUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
       
-      if (!data.products || data.products.length === 0) {
-        throw new Error('No products found');
+      const data = await response.json();
+      const products = [];
+      
+      if (data.products) {
+        data.products.forEach(product => {
+          products.push({
+            name: product.name,
+            price: product.mrp,
+            url: `https://blinkit.com/products/${product.slug}`,
+            deliveryTime: '10-20 minutes',
+            platform: 'Blinkit'
+          });
+        });
       }
-  
-      const product = data.products[0];
-      return {
-        price: product.price,
-        deliveryTime: '10-20 minutes',
-        url: `https://blinkit.com/products/${product.slug}`,
-        name: product.name,
-        image: product.image_url
-      };
+      
+      return products;
     } catch (error) {
-      throw new Error(`Blinkit scraping failed: ${error.message}`);
+      console.error('Blinkit fetch error:', error);
+      return [];
     }
   }
   
-  async function scrapeZepto(query) {
-    const searchUrl = `https://www.zeptonow.com/api/search?q=${encodeURIComponent(query)}`;
+  async function fetchZeptoResults(query) {
+    const searchUrl = `https://www.zeptonow.com/api/p1/search?q=${encodeURIComponent(query)}`;
     
     try {
-      const response = await fetchWithRetry(searchUrl);
-      const data = await response.json();
+      const response = await fetchWithRetry(searchUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
       
-      if (!data.results || data.results.length === 0) {
-        throw new Error('No products found');
+      const data = await response.json();
+      const products = [];
+      
+      if (data.results) {
+        data.results.forEach(product => {
+          products.push({
+            name: product.name,
+            price: product.price,
+            url: `https://www.zeptonow.com/product/${product.slug}`,
+            deliveryTime: '10-20 minutes',
+            platform: 'Zepto'
+          });
+        });
       }
-  
-      const product = data.results[0];
-      return {
-        price: product.price,
-        deliveryTime: '10-20 minutes',
-        url: `https://www.zeptonow.com/product/${product.slug}`,
-        name: product.name,
-        image: product.image
-      };
+      
+      return products;
     } catch (error) {
-      throw new Error(`Zepto scraping failed: ${error.message}`);
+      console.error('Zepto fetch error:', error);
+      return [];
     }
   }
   
-  async function scrapeAmazon(query) {
+  async function fetchAmazonResults(query) {
     const searchUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}+grocery`;
     
     try {
-      const response = await fetchWithRetry(searchUrl);
-      const text = await response.text();
+      const response = await fetchWithRetry(searchUrl, {
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
       
-      // Use regex to extract product information
-      const priceMatch = text.match(/"price":{"displayAmount":"₹([\d,]+\.?\d*)/);
-      const nameMatch = text.match(/"title":"([^"]+)"/);
-      const urlMatch = text.match(/"url":"([^"]+)"/);
+      const html = await response.text();
+      const products = [];
       
-      if (!priceMatch || !nameMatch || !urlMatch) {
-        throw new Error('Product information not found');
+      // Parse the HTML using regex
+      const productMatches = html.match(/data-asin="[^"]*"(.*?)(?=data-asin|$)/gs);
+      
+      if (productMatches) {
+        productMatches.forEach(match => {
+          const nameMatch = match.match(/product-title">(.*?)<\/span>/);
+          const priceMatch = match.match(/price">(₹|Rs\.)\s*([\d,]+\.?\d*)/);
+          const urlMatch = match.match(/href="([^"]+)"/);
+          
+          if (nameMatch && priceMatch && urlMatch) {
+            products.push({
+              name: nameMatch[1].trim(),
+              price: parseCurrency(priceMatch[2]),
+              url: `https://www.amazon.in${urlMatch[1]}`,
+              deliveryTime: '2-3 days',
+              platform: 'Amazon'
+            });
+          }
+        });
       }
-  
-      return {
-        price: parseCurrency(priceMatch[1]),
-        deliveryTime: '2-3 days',
-        url: urlMatch[1].replace(/\\/g, ''),
-        name: nameMatch[1],
-        image: null // Add image extraction if needed
-      };
+      
+      return products;
     } catch (error) {
-      throw new Error(`Amazon scraping failed: ${error.message}`);
+      console.error('Amazon fetch error:', error);
+      return [];
     }
   }
   
-  async function scrapeFlipkart(query) {
+  async function fetchFlipkartResults(query) {
     const searchUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}+grocery`;
     
     try {
-      const response = await fetchWithRetry(searchUrl);
-      const text = await response.text();
+      const response = await fetchWithRetry(searchUrl, {
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
       
-      // Use regex to extract product information
-      const priceMatch = text.match(/"price":{"value":([\d.]+)/);
-      const nameMatch = text.match(/"name":"([^"]+)"/);
-      const urlMatch = text.match(/"url":"([^"]+)"/);
+      const html = await response.text();
+      const products = [];
       
-      if (!priceMatch || !nameMatch || !urlMatch) {
-        throw new Error('Product information not found');
+      // Parse the HTML using regex
+      const productMatches = html.match(/<div class="_1AtVbE">(.*?)<\/div>/gs);
+      
+      if (productMatches) {
+        productMatches.forEach(match => {
+          const nameMatch = match.match(/_4rR01T">(.*?)<\/div>/);
+          const priceMatch = match.match(/_30jeq3">(₹|Rs\.)\s*([\d,]+)/);
+          const urlMatch = match.match(/href="([^"]+)"/);
+          
+          if (nameMatch && priceMatch && urlMatch) {
+            products.push({
+              name: nameMatch[1].trim(),
+              price: parseCurrency(priceMatch[2]),
+              url: `https://www.flipkart.com${urlMatch[1]}`,
+              deliveryTime: '2-4 days',
+              platform: 'Flipkart'
+            });
+          }
+        });
       }
-  
-      return {
-        price: parseFloat(priceMatch[1]),
-        deliveryTime: '2-4 days',
-        url: `https://www.flipkart.com${urlMatch[1]}`,
-        name: nameMatch[1],
-        image: null // Add image extraction if needed
-      };
+      
+      return products;
     } catch (error) {
-      throw new Error(`Flipkart scraping failed: ${error.message}`);
+      console.error('Flipkart fetch error:', error);
+      return [];
     }
+  }
+  
+  function organizeResults(platformResults) {
+    const productMap = new Map();
+  
+    // Process results from each platform
+    platformResults.forEach(({ platform, result }) => {
+      result.forEach(product => {
+        const normalizedName = normalizeProductName(product.name);
+        
+        if (!productMap.has(normalizedName)) {
+          productMap.set(normalizedName, {
+            name: product.name,
+            platforms: {}
+          });
+        }
+  
+        productMap.get(normalizedName).platforms[platform] = {
+          price: product.price,
+          deliveryTime: product.deliveryTime,
+          url: product.url
+        };
+      });
+    });
+  
+    return Array.from(productMap.values());
+  }
+  
+  function normalizeProductName(name) {
+    // Remove special characters, extra spaces, and convert to lowercase
+    return name
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
