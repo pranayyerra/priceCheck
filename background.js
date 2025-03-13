@@ -185,6 +185,7 @@ function parseBlinkitProduct(productHtml) {
   );
   const priceMatch = priceContainer?.[0].match(/₹(?:<!-- -->)?([0-9,.]+)/);
   const urlMatch = productHtml.match(/href="([^"]+)"/);
+  console.log({ urlMatch });
   const quantityMatch = productHtml.match(
     /class="bff_variant_text_only[^"]*">([^<]+)<\/span>/
   );

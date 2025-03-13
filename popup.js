@@ -132,10 +132,11 @@ document.addEventListener("DOMContentLoaded", function () {
       .reverse()
       .forEach(([searchTerm, platformResults]) => {
         const row = document.createElement("tr");
+        row.dataset.searchTerm = searchTerm;
 
         // Search term cell with delete button - add structure similar to platform cells
         let html = `
-          <td class="platform-data">
+          <td class="platform-data search-term-column">
             <div class="product-name">${searchTerm}</div>
             <div class="search-term-spacer">&nbsp;</div>
             <div class="search-term-actions">
@@ -144,14 +145,19 @@ document.addEventListener("DOMContentLoaded", function () {
           </td>
         `;
 
-        // Find the lowest price among all platforms for this search term
+        // Find the lowest price and platform
         let lowestPrice = Infinity;
+        let lowestPricePlatform = null;
+
         Object.values(PLATFORMS).forEach((platform) => {
           const results = platformResults.get(platform) || [];
           const product = results[0]; // Get first result
 
           if (product && typeof product.price === "number") {
-            lowestPrice = Math.min(lowestPrice, product.price);
+            if (product.price < lowestPrice) {
+              lowestPrice = product.price;
+              lowestPricePlatform = platform;
+            }
           }
         });
 
@@ -163,15 +169,19 @@ document.addEventListener("DOMContentLoaded", function () {
           if (product) {
             // Check if this product has the lowest price
             const isLowestPrice = product.price === lowestPrice;
-            const cellClass = isLowestPrice
-              ? "platform-data lowest-price-cell"
-              : "platform-data";
+            // Add both lowest price styling and selected cell class for lowest price
+            const cellClasses = isLowestPrice
+              ? "platform-data clickable-cell selected-cell"
+              : "platform-data clickable-cell";
             const priceClass = isLowestPrice ? "price lowest-price" : "price";
 
             html += `
-              <td class="${cellClass}">
+              <td class="${cellClasses}" data-platform="${platform}" data-url="${
+              product.url
+            }">
                 <div class="product-name">${product.name}</div>
                 <div class="${priceClass}">Rs. ${product.price.toFixed(2)}</div>
+                <div class="delivery-time">${product.deliveryTime || ""}</div>
                 <button class="view-button" data-url="${
                   product.url
                 }">View</button>
@@ -190,16 +200,24 @@ document.addEventListener("DOMContentLoaded", function () {
         resultsBody.appendChild(row);
       });
 
+    // Add event listeners to buttons and cells
+    addEventListeners();
+  }
+
+  // Separated this into its own function for cleaner code
+  function addEventListeners() {
     // Add event listeners to buttons
     document.querySelectorAll(".view-button").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent cell click when button is clicked
         chrome.tabs.create({ url: button.dataset.url, active: false });
       });
     });
 
     // Add delete button listeners
     document.querySelectorAll(".delete-button").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent cell click when button is clicked
         const searchTerm = button.dataset.search;
         allResults.delete(searchTerm);
         // Update storage
@@ -208,6 +226,25 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         // Refresh display
         displayAllResults();
+      });
+    });
+
+    // Add click event listeners for all platform cells
+    document.querySelectorAll(".clickable-cell").forEach((cell) => {
+      cell.addEventListener("click", function () {
+        // Check if this cell is already selected
+        if (this.classList.contains("selected-cell")) {
+          // If already selected, just remove the class to deselect it
+          this.classList.remove("selected-cell");
+        } else {
+          // If not selected, first remove selected class from all cells in this row
+          const row = this.parentElement;
+          row.querySelectorAll(".selected-cell").forEach((selected) => {
+            selected.classList.remove("selected-cell");
+          });
+          // Then add to this cell
+          this.classList.add("selected-cell");
+        }
       });
     });
   }
