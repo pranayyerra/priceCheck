@@ -109,73 +109,85 @@ async function fetchBigBasketResults(query) {
 }
 
 async function fetchBlinkitResults(query) {
-  const searchUrl = `https://blinkit.com/s/?q=${encodeURIComponent(
-    query
-  )}`;
-
+  const searchUrl = `https://blinkit.com/s/?q=${encodeURIComponent(query)}`;
+  
   try {
     const response = await fetchWithRetry(searchUrl, {
       headers: {
-        Accept: "application/json",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
+        'Accept': 'text/html',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
     });
 
-    const data = await response.json();
+    const html = await response.text();
     const products = [];
 
-    if (data.products) {
-      data.products.forEach((product) => {
-        products.push({
-          name: product.name,
-          price: product.mrp,
-          url: `https://blinkit.com/products/${product.slug}`,
-          deliveryTime: "10-20 minutes",
-          platform: "Blinkit",
-        });
+    // Parse the HTML using regex
+    const productMatches = html.match(/<div class="Product(?:.*?)<\/div>/gs);
+
+    if (productMatches) {
+      productMatches.forEach(match => {
+        const nameMatch = match.match(/product-name"[^>]*>([^<]+)/);
+        const priceMatch = match.match(/actual-price[^>]*>₹\s*([0-9,.]+)/);
+        const urlMatch = match.match(/href="([^"]+)"/);
+
+        if (nameMatch && priceMatch && urlMatch) {
+          products.push({
+            name: nameMatch[1].trim(),
+            price: parseCurrency(priceMatch[1]),
+            url: `https://blinkit.com${urlMatch[1]}`,
+            deliveryTime: '10-20 minutes',
+            platform: 'Blinkit'
+          });
+        }
       });
     }
 
     return products;
   } catch (error) {
-    console.error("Blinkit fetch error:", error);
+    console.error('Blinkit fetch error:', error);
     return [];
   }
 }
 
 async function fetchZeptoResults(query) {
-  const searchUrl = `https://www.zeptonow.com/search?q=${encodeURIComponent(
-    query
-  )}`;
-
+  const searchUrl = `https://www.zeptonow.com/search?q=${encodeURIComponent(query)}`;
+  
   try {
     const response = await fetchWithRetry(searchUrl, {
       headers: {
-        Accept: "application/json",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
+        'Accept': 'text/html',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
     });
 
-    const data = await response.json();
+    const html = await response.text();
     const products = [];
 
-    if (data.results) {
-      data.results.forEach((product) => {
-        products.push({
-          name: product.name,
-          price: product.price,
-          url: `https://www.zeptonow.com/product/${product.slug}`,
-          deliveryTime: "10-20 minutes",
-          platform: "Zepto",
-        });
+    // Parse the HTML using regex
+    const productMatches = html.match(/<div[^>]*class="[^"]*product-card[^"]*"[^>]*>.*?<\/div>/gs);
+
+    if (productMatches) {
+      productMatches.forEach(match => {
+        const nameMatch = match.match(/product-name[^>]*>([^<]+)/);
+        const priceMatch = match.match(/product-price[^>]*>₹\s*([0-9,.]+)/);
+        const urlMatch = match.match(/href="([^"]+)"/);
+
+        if (nameMatch && priceMatch && urlMatch) {
+          products.push({
+            name: nameMatch[1].trim(),
+            price: parseCurrency(priceMatch[1]),
+            url: `https://www.zeptonow.com${urlMatch[1]}`,
+            deliveryTime: '10-20 minutes',
+            platform: 'Zepto'
+          });
+        }
       });
     }
 
     return products;
   } catch (error) {
-    console.error("Zepto fetch error:", error);
+    console.error('Zepto fetch error:', error);
     return [];
   }
 }
@@ -268,7 +280,7 @@ const parseCurrency = (priceStr) => {
 };
 
 // Helper function to make HTTP requests with retry logic
-async function fetchWithRetry(url, options = {}, retries = 3) {
+async function fetchWithRetry(url, options = {}, retries = 1) {
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(url, {
