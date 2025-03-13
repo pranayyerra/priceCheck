@@ -142,16 +142,34 @@ document.addEventListener("DOMContentLoaded", function () {
         </td>
       `;
 
+      // Find the lowest price among all platforms for this search term
+      let lowestPrice = Infinity;
+      Object.values(PLATFORMS).forEach((platform) => {
+        const results = platformResults.get(platform) || [];
+        const product = results[0]; // Get first result
+
+        if (product && typeof product.price === "number") {
+          lowestPrice = Math.min(lowestPrice, product.price);
+        }
+      });
+
       // Platform cells
       Object.values(PLATFORMS).forEach((platform) => {
         const results = platformResults.get(platform) || [];
         const product = results[0]; // Get first result
 
         if (product) {
+          // Check if this product has the lowest price
+          const isLowestPrice = product.price === lowestPrice;
+          const cellClass = isLowestPrice
+            ? "platform-data lowest-price-cell"
+            : "platform-data";
+          const priceClass = isLowestPrice ? "price lowest-price" : "price";
+
           html += `
-            <td class="platform-data">
+            <td class="${cellClass}">
               <div class="product-name">${product.name}</div>
-              <div class="price">Rs. ${product.price.toFixed(2)}</div>
+              <div class="${priceClass}">Rs. ${product.price.toFixed(2)}</div>
               <div class="delivery-time">${product.deliveryTime}</div>
               <button class="view-button" data-url="${
                 product.url
