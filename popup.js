@@ -211,14 +211,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function normalizeProductName(name) {
-    return name
-      .toLowerCase()
-      .replace(/[^\w\s]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
   function showError(message) {
     resultsBody.innerHTML = `
         <tr>
@@ -265,7 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Add some CSS for the delete button
-  const style = document.createElement("style");
+  const style = document.createElement('style');
   style.textContent = `
     .delete-button {
       margin-left: 8px;
@@ -276,7 +268,6 @@ document.addEventListener("DOMContentLoaded", function () {
       color: white;
       cursor: pointer;
       font-size: 12px;
-      padding: 6px;
     }
     .delete-button:hover {
       background: #cc0000;
