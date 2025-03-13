@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "Price & Delivery Comparison",
+    "version": "1.0",
+    "description": "Compare prices and delivery times for vegetables and fruits across multiple sites.",
+    "permissions": ["activeTab", "scripting", "storage", "<all_urls>"],
+    "host_permissions": ["https://*.amazon.in/*", "https://*.bigbasket.com/*", "https://*.zepto.com/*", "https://*.flipkart.com/*", "https://*.blinkit.com/*"],
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "dollar_16.png",
+        "64": "dollar_64.png",
+        "128": "dollar_128.png"
+      }
+    },
+    "background": {
+      "service_worker": "background.js"
+    }
+  }
+  
