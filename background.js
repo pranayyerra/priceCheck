@@ -262,8 +262,11 @@ async function fetchAmazonResults(query) {
     console.log("Amazon HTML:", html.substring(0, 500));
 
     const productMatches = html.match(
-      /<div[^>]*class="[^"]*s-result-item[^"]*"[^>]*>.*?<\/div>/gs
+      /data-asin="[^"]*"(.*?)(?=data-asin|$)/gs
     );
+
+    const products = [];
+
     console.log(
       "Amazon product matches:",
       productMatches ? productMatches.length : "none found"
@@ -293,7 +296,7 @@ async function fetchAmazonResults(query) {
       });
     }
 
-    return products[0];
+    return products;
   } catch (error) {
     console.error("Amazon fetch error:", error);
     return [];
