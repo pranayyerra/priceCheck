@@ -8,16 +8,17 @@ document.addEventListener("DOMContentLoaded", function () {
     BLINKIT: "Blinkit",
     AMAZON: "Amazon",
   };
-  let currentResults = new Map(); // Store current results
+  let allResults = new Map(); // Store all accumulated results
 
-  // Load previous results when popup opens
-  chrome.storage.local.get(['lastSearch', 'lastResults'], function(data) {
-    if (data.lastSearch) {
-      searchInput.value = data.lastSearch;
-      if (data.lastResults) {
-        currentResults = new Map(JSON.parse(data.lastResults));
-        displayFinalResults();
-      }
+  // Load all previous results when popup opens
+  chrome.storage.local.get(['searchHistory'], function(data) {
+    if (data.searchHistory) {
+      // Convert the parsed data back into a Map of Maps
+      const parsedData = JSON.parse(data.searchHistory);
+      allResults = new Map(
+        parsedData.map(([key, value]) => [key, new Map(Object.entries(value))])
+      );
+      displayAllResults();
     }
   });
 
@@ -77,13 +78,26 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function handlePlatformResults(platform, results) {
-    // Store the results
-    currentResults.set(platform, results);
+    const searchTerm = searchInput.value.trim();
+    if (!allResults.has(searchTerm)) {
+      allResults.set(searchTerm, new Map());
+    }
+    
+    // Store results for this search term and platform
+    const platformResults = allResults.get(searchTerm);
+    if (!(platformResults instanceof Map)) {
+      allResults.set(searchTerm, new Map());
+    }
+    allResults.get(searchTerm).set(platform, results);
 
-    // Save results to storage
+    // Convert Maps to a serializable format before storing
+    const serializableResults = Array.from(allResults.entries()).map(
+      ([term, platformMap]) => [term, Object.fromEntries(platformMap)]
+    );
+
+    // Save all results to storage
     chrome.storage.local.set({
-      'lastSearch': searchInput.value,
-      'lastResults': JSON.stringify(Array.from(currentResults.entries()))
+      'searchHistory': JSON.stringify(serializableResults)
     });
 
     // Remove loading state for this platform
@@ -93,86 +107,80 @@ document.addEventListener("DOMContentLoaded", function () {
       loadingCell.innerHTML = `<div class="platform-ready">Results ready</div>`;
     }
 
-    // Check if all platforms have reported results
-    if (currentResults.size === Object.values(PLATFORMS).length) {
-      displayFinalResults();
+    // Check if all platforms have reported results for current search
+    const currentPlatformResults = allResults.get(searchTerm);
+    if (currentPlatformResults instanceof Map && 
+        currentPlatformResults.size === Object.values(PLATFORMS).length) {
+      displayAllResults();
     }
   }
 
-  function displayFinalResults() {
-    // Remove only the loading row
+  function displayAllResults() {
+    // Remove loading row if exists
     const loadingRow = document.getElementById("loadingRow");
     if (loadingRow) {
       loadingRow.remove();
     }
 
-    // Organize results by product
-    const productMap = new Map();
+    // Clear current display
+    resultsBody.innerHTML = '';
 
-    // Process results from each platform
-    currentResults.forEach((results, platform) => {
-      results.forEach((product) => {
-        const normalizedProduct = normalizeProductName(
-          searchInput.value.trim()
-        );
-
-        if (!productMap.has(normalizedProduct)) {
-          productMap.set(normalizedProduct, {
-            name: normalizedProduct,
-            platforms: {},
-          });
-        }
-
-        productMap.get(normalizedProduct).platforms[platform] = {
-          name: product.name,
-          price: product.price,
-          deliveryTime: product.deliveryTime,
-          url: product.url,
-        };
-      });
-    });
-
-    // Convert to array and sort by name
-    const organizedResults = Array.from(productMap.values()).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-
-    // Create and insert new rows at the top of the table
-    organizedResults.forEach((product) => {
+    // Display results for each search term
+    allResults.forEach((platformResults, searchTerm) => {
       const row = document.createElement("tr");
-
-      // Product name cell
-      let html = `<td class="product-name">${product.name}</td>`;
+      
+      // Search term cell with delete button
+      let html = `
+        <td class="product-name">
+          ${searchTerm}
+          <button class="delete-button" data-search="${searchTerm}">×</button>
+        </td>
+      `;
 
       // Platform cells
       Object.values(PLATFORMS).forEach((platform) => {
-        const platformData = product.platforms[platform];
-        if (platformData) {
+        const results = platformResults.get(platform) || [];
+        const product = results[0]; // Get first result
+
+        if (product) {
           html += `
-              <td class="platform-data">
-                <div class="product-name">${platformData.name}</div>
-                <div class="price">Rs. ${platformData.price.toFixed(2)}</div>
-                <div class="delivery-time">${platformData.deliveryTime}</div>
-                <button class="view-button" data-url="${platformData.url}">View</button>
-              </td>
-            `;
+            <td class="platform-data">
+              <div class="price">Rs. ${product.price.toFixed(2)}</div>
+              <div class="delivery-time">${product.deliveryTime}</div>
+              <button class="view-button" data-url="${product.url}">View</button>
+            </td>
+          `;
         } else {
           html += `
-              <td class="platform-data not-available">
-                <div>Not available</div>
-              </td>
-            `;
+            <td class="platform-data not-available">
+              <div>Not available</div>
+            </td>
+          `;
         }
       });
 
       row.innerHTML = html;
-      resultsBody.insertBefore(row, resultsBody.firstChild);
+      resultsBody.appendChild(row);
     });
 
-    // Add event listeners to new buttons
+    // Add event listeners to buttons
     document.querySelectorAll(".view-button").forEach((button) => {
       button.addEventListener("click", () => {
         chrome.tabs.create({ url: button.dataset.url, active: false });
+      });
+    });
+
+    // Add delete button listeners
+    document.querySelectorAll(".delete-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        const searchTerm = button.dataset.search;
+        allResults.delete(searchTerm);
+        // Update storage
+        chrome.storage.local.set({
+          'searchHistory': JSON.stringify(Array.from(allResults.entries()))
+        });
+        // Refresh display
+        displayAllResults();
       });
     });
   }
@@ -229,4 +237,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
     tableBody.appendChild(row);
   }
+
+  // Add some CSS for the delete button
+  const style = document.createElement('style');
+  style.textContent = `
+    .delete-button {
+      margin-left: 8px;
+      padding: 2px 6px;
+      border-radius: 50%;
+      border: none;
+      background: #ff4444;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .delete-button:hover {
+      background: #cc0000;
+    }
+    .product-name {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+  `;
+  document.head.appendChild(style);
 });
