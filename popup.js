@@ -130,6 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (platformData) {
           html += `
               <td class="platform-data">
+                <div class="product-name">${platformData.name}</div>
                 <div class="price">Rs. ${platformData.price.toFixed(2)}</div>
                 <div class="delivery-time">${platformData.deliveryTime}</div>
                 <button class="view-button" data-url="${
