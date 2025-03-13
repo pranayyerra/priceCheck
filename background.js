@@ -9,29 +9,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function searchProducts(query) {
-  console.log("Searching for:", query);
+  const platforms = [
+    { name: "BigBasket", fetcher: fetchBigBasketResults },
+    { name: "Blinkit", fetcher: fetchBlinkitResults },
+    { name: "Zepto", fetcher: fetchZeptoResults },
+    { name: "Amazon", fetcher: fetchAmazonResults },
+  ];
 
-  const results = await Promise.all([
-    fetchBigBasketResults(query).then((results) => {
-      console.log("BigBasket results:", results);
-      return results;
-    }),
-    fetchBlinkitResults(query).then((results) => {
-      console.log("Blinkit results:", results);
-      return results;
-    }),
-    fetchZeptoResults(query).then((results) => {
-      console.log("Zepto results:", results);
-      return results;
-    }),
-    fetchAmazonResults(query).then((results) => {
-      console.log("Amazon results:", results);
-      return results;
-    }),
-  ]);
-
-  console.log("All results:", results.flat());
-  return results.flat();
+  // Launch all fetchers in parallel
+  platforms.forEach(async (platform) => {
+    try {
+      const results = await platform.fetcher(query);
+      // Send results back to popup as they arrive
+      chrome.runtime.sendMessage({
+        type: "platformResults",
+        platform: platform.name,
+        results: results,
+      });
+    } catch (error) {
+      console.error(`Error fetching from ${platform.name}:`, error);
+      // Send empty results on error
+      chrome.runtime.sendMessage({
+        type: "platformResults",
+        platform: platform.name,
+        results: [],
+      });
+    }
+  });
 }
 
 async function fetchAllPlatformResults(query) {
