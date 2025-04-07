@@ -1,30 +1,29 @@
 {
-    "manifest_version": 3,
-    "name": "Price Comparison Extension",
-    "version": "1.0",
-    "description": "Compare prices across multiple grocery shopping platforms",
-    "permissions": [
-      "activeTab",
-      "storage"
-    ],
-    "host_permissions": [
-      "https://www.bigbasket.com/*",
-      "https://blinkit.com/*",
-      "https://www.amazon.in/*"
-    ],
-    "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "icons/dollar_16.png",
-        "64": "icons/dollar_64.png",
-        "128": "icons/dollar_128.png"
-      }
-    },
-    "background": {
-      "service_worker": "background.js"
-    },
-    "content_security_policy": {
-      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.bigbasket.com https://blinkit.com https://www.amazon.in;"
+  "manifest_version": 3,
+  "name": "Price Comparison Extension",
+  "version": "1.0",
+  "description": "Compare prices across multiple grocery shopping platforms",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.bigbasket.com/*",
+    "https://blinkit.com/*",
+    "https://www.amazon.in/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/dollar_16.png",
+      "64": "icons/dollar_64.png",
+      "128": "icons/dollar_128.png"
     }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.bigbasket.com https://blinkit.com https://www.amazon.in;"
   }
-  
+}
