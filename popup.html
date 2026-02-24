@@ -1,31 +1,74 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Price Comparison</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div class="container">
-    <h1>Price Comparison</h1>
-    <div class="search-container">
-      <input type="text" id="searchInput" placeholder="Enter product name...">
-      <button id="searchButton">Search</button>
+  <head>
+    <title>Price Comparison</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Price Comparison</h1>
+      <p class="subtitle">Compare grocery prices across platforms</p>
+      <div class="search-container">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Enter product name..."
+        />
+        <button id="searchButton">Search</button>
+      </div>
+      <div class="cart-actions">
+        <button id="optimizeButton">Optimize</button>
+        <button id="clearCartButton">Clear Cart</button>
+      </div>
+      <div class="results-container">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>BigBasket</th>
+              <th>Amazon Fresh</th>
+              <th>KPN Fresh</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+          <tfoot id="costSummary"></tfoot>
+        </table>
+      </div>
+      <div class="add-to-carts-bar">
+        <button id="addToCartsButton" disabled>Add to Carts</button>
+      </div>
+      <!-- Clear-carts confirmation modal -->
+      <div id="clearCartsModal" class="modal-overlay" style="display: none">
+        <div class="modal-dialog">
+          <p class="modal-message">
+            Do you want to clear items already in your carts before adding new
+            ones?
+          </p>
+          <div class="modal-actions">
+            <button id="clearCartsYes" class="modal-btn modal-btn-yes">
+              Yes
+            </button>
+            <button id="clearCartsNo" class="modal-btn modal-btn-no">No</button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="optimizationResults"
+        class="optimization-panel"
+        style="display: none"
+      >
+        <div class="optimization-header">
+          <h3>Optimization Results</h3>
+          <button id="closeOptimization" class="close-button">&#x2715;</button>
+        </div>
+        <div id="optimizationContent"></div>
+        <button id="applyOptimization">Apply Suggestions</button>
+      </div>
     </div>
-    <div class="results-container">
-      <table id="resultsTable">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>BigBasket</th>
-            <th>Blinkit</th>
-            <th>Amazon</th>
-          </tr>
-        </thead>
-        <tbody id="resultsBody">
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <script src="popup.js"></script>
-</body>
+    <script src="utils.js"></script>
+    <script src="fees.js"></script>
+    <script src="optimizer.js"></script>
+    <script src="popup.js"></script>
+  </body>
 </html>

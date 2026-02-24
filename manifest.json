@@ -3,14 +3,11 @@
   "name": "Price Comparison Extension",
   "version": "1.0",
   "description": "Compare prices across multiple grocery shopping platforms",
-  "permissions": [
-    "activeTab",
-    "storage"
-  ],
+  "permissions": ["activeTab", "storage", "scripting", "tabs"],
   "host_permissions": [
     "https://www.bigbasket.com/*",
-    "https://blinkit.com/*",
-    "https://www.amazon.in/*"
+    "https://www.amazon.in/*",
+    "https://www.kpnfresh.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -24,6 +21,6 @@
     "service_worker": "background.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.bigbasket.com https://blinkit.com https://www.amazon.in;"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.bigbasket.com https://www.amazon.in https://www.kpnfresh.com https://generativelanguage.googleapis.com; img-src https: data:;"
   }
 }
