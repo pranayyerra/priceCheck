@@ -24,10 +24,8 @@ This Chrome extension is designed to help users find the best prices for vegetab
 ## Supported Platforms
 Currently, the extension supports the following online shopping platforms:
 * Bigbasket
-* Blinkit
-* Zepto
 * Amazon
-* Flipkart
+* KPN Fresh
 
 ## How It Works
 1. Install the Chrome extension from the Chrome Web Store (or load it as an unpacked extension during development).
